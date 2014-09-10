@@ -65,12 +65,75 @@ SerialCommS300::SerialCommS300()
   m_rxCount = 0;
   m_ranges = NULL;
 }
-
+unsigned int SerialCommS300::GetStamp()
+{
+	return stamp_;
+}
 SerialCommS300::~SerialCommS300()
 {
   disconnect();
 }
 
+
+
+
+
+int set_interface_attribs (int fd, int speed, int parity)
+{
+        struct termios tty;
+        memset (&tty, 0, sizeof tty);
+        if (tcgetattr (fd, &tty) != 0)
+        {
+//                error_message ("error %d from tcgetattr", errno);
+							printf("error\n");
+                return -1;
+        }
+
+        cfsetospeed (&tty, speed);
+        cfsetispeed (&tty, speed);
+
+        tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
+        // disable IGNBRK for mismatched speed tests; otherwise receive break
+        // as \000 chars
+        tty.c_iflag &= ~IGNBRK;         // ignore break signal
+        tty.c_lflag = 0;                // no signaling chars, no echo,
+                                        // no canonical processing
+        tty.c_oflag = 0;                // no remapping, no delays
+        tty.c_cc[VMIN]  = 0;            // read doesn't block
+        tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
+
+        tty.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
+
+        tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
+                                        // enable reading
+        tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
+        tty.c_cflag |= parity;
+        tty.c_cflag &= ~CSTOPB;
+        tty.c_cflag &= ~CRTSCTS;
+
+        if (tcsetattr (fd, TCSANOW, &tty) != 0)
+        {
+//                error_message ("error %d from tcsetattr", errno);
+                return -1;
+        }
+        return 0;
+}
+void set_blocking (int fd, int should_block)
+{
+        struct termios tty;
+        memset (&tty, 0, sizeof tty);
+        if (tcgetattr (fd, &tty) != 0)
+        {
+//                error_message ("error %d from tggetattr", errno);
+                return;
+        }
+
+        tty.c_cc[VMIN]  = should_block ? 1 : 0;
+        tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
+
+/*        if (tcsetattr (fd, TCSANOW, &tty) != 0)
+                error_message ("error %d setting term attributes", errno);*/
+}
 int SerialCommS300::connect(const std::string& deviceName, unsigned int baudRate)
 {
 
@@ -80,14 +143,19 @@ int SerialCommS300::connect(const std::string& deviceName, unsigned int baudRate
     std::cout << "SerialCommS300: unable to open serial port " << deviceName << "\n";
     return -1;
   }
+/*
+	set_interface_attribs (m_fd, B115200, 0);
+	set_blocking (m_fd, 0);  
+*/
+
 
   setFlags();
   if (setBaudRate(baudRateToBaudCode(baudRate)))
     return -1;
 
-  tcflush(m_fd, TCIOFLUSH);
+/*  tcflush(m_fd, TCIOFLUSH);
   usleep(1000);
-  tcflush(m_fd, TCIFLUSH);
+  tcflush(m_fd, TCIFLUSH);*/
 
   return 0;
 
@@ -111,7 +179,7 @@ void SerialCommS300::setFlags()
 
   if (tcsetattr(m_fd, TCSANOW, &term) < 0)
     std::cout << "SerialCommS300: failed to set tty device attributes";
-  tcflush(m_fd, TCIOFLUSH);
+//  tcflush(m_fd, TCIOFLUSH);
 
 }
 
@@ -143,11 +211,13 @@ int SerialCommS300::setBaudRate(int baudRate)
 
 int SerialCommS300::baudRateToBaudCode(int baudRate)
 {
+		printf("baud=%d\n",baudRate);
   switch (baudRate)
   {
     case 38400:
       return B38400;
     case 115200:
+		printf("pravi\n");
       return B115200;
     case 500000:
       return B500000;
@@ -158,7 +228,7 @@ int SerialCommS300::baudRateToBaudCode(int baudRate)
 
 int SerialCommS300::disconnect()
 {
-  ::close(m_fd);
+//  ::close(m_fd);
   return 0;
 }
 
@@ -194,7 +264,6 @@ static const unsigned short crc_table[256] = {0x0000, 0x1021, 0x2042, 0x3063, 0x
 
 unsigned short SerialCommS300::createCRC(unsigned char* data, ssize_t length)
 {
-
   unsigned short CRC_16 = 0xFFFF;
   unsigned short i;
 
@@ -209,12 +278,14 @@ unsigned short SerialCommS300::createCRC(unsigned char* data, ssize_t length)
 
 int SerialCommS300::readData()
 {
+	unsigned int st;
 
   if (RX_BUFFER_SIZE - m_rxCount > 0)
   {
-
     // Read a packet from the laser
+    printf("read\n");
     int len = read(m_fd, &m_rxBuffer[m_rxCount], RX_BUFFER_SIZE - m_rxCount);
+    printf("%d\n",len);
     if (len == 0)
     {
       return -1;
@@ -225,21 +296,35 @@ int SerialCommS300::readData()
       std::cout << "SerialCommS300: error reading form serial port: " << strerror(errno) << "\n";
       return -1;
     }
-
-    m_rxCount += len;
+    int raz=0;
+	for (int i=m_rxCount;i<m_rxCount+len-1;i++)
+	{
+		m_rxBuffer[i-raz]=m_rxBuffer[i];
+		if (m_rxBuffer[i]==0xff && m_rxBuffer[i+1]==0xff)
+		{
+			raz++;
+			i++;
+		}
+	}
+	m_rxBuffer[m_rxCount+len-1-raz]=m_rxBuffer[m_rxCount+len-1];
+    m_rxCount += len-raz;
 
   }
-
+	printf("%d\n",m_rxCount);
   while (m_rxCount >= 22)
   {
 
     // find our continuous data header
     int ii;
     bool found = false;
+    
     for (ii = 0; ii < m_rxCount - 22; ++ii)
     {
+//		printf("%d ",m_rxBuffer[ii]);
       if (memcmp(&m_rxBuffer[ii], "\0\0\0\0\0\0", 6) == 0 && memcmp(&m_rxBuffer[ii+8], "\xFF", 1) == 0)
       {
+		  printf("ja\n");
+	st=m_rxBuffer[ii+14]+m_rxBuffer[ii+15]*256+m_rxBuffer[ii+16]*256*256+m_rxBuffer[ii+17]*256*256*256;
         memmove(m_rxBuffer, &m_rxBuffer[ii], m_rxCount - ii);
         m_rxCount -= ii;
         found = true;
@@ -290,7 +375,7 @@ int SerialCommS300::readData()
         packet_checksum = *reinterpret_cast<unsigned short *> (&m_rxBuffer[size + 12]);
         calc_checksum = createCRC(&m_rxBuffer[4], size + 8);
     }
-
+	printf("checksum %d %d\n",packet_checksum,calc_checksum);
     if (packet_checksum != calc_checksum)
     {
       std::cout << "SerialCommS300: Checksum's dont match, thats bad (data packet size " << size << ")\n";
@@ -300,6 +385,8 @@ int SerialCommS300::readData()
     else
     {
       uint8_t* data = &m_rxBuffer[20];
+		printf("%d %d\n",data[0],data[1]);
+
       if (data[0] != data[1])
       {
         std::cout << "SerialCommS300: Bad type header bytes dont match\n";
@@ -313,6 +400,7 @@ int SerialCommS300::readData()
         else if (data[0] == 0xBB)
         {
           int data_count;
+  	stamp_=st;
     	  if (protocol == PROTOCOL_1_02)
               data_count = (size - 22) / 2;
           else if (protocol == PROTOCOL_1_03)

@@ -75,7 +75,7 @@ public:
   {
     return m_ranges;
   }
-
+  unsigned int GetStamp();
   int connect(const std::string& deviceName, unsigned int baudRate = DEFAULT_BAUD_RATE);
   int disconnect();
 
@@ -95,6 +95,7 @@ protected:
   int m_fd;
 
   int m_rxCount;
+  unsigned int stamp_;
 
   float* m_ranges;
   unsigned int m_rangesCount;

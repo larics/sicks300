@@ -5,13 +5,25 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   tf
   sensor_msgs
+  std_msgs
+  message_generation
+)
+add_message_files(
+  FILES
+  s300timestamp.msg
+)
+ generate_messages(
+   DEPENDENCIES
+   std_msgs
 )
 
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES serialcomm_s300
-  CATKIN_DEPENDS roscpp tf sensor_msgs
+  CATKIN_DEPENDS roscpp tf sensor_msgs message_runtime
 )
+
+
 
 include_directories(
   include

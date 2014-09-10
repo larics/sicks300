@@ -53,7 +53,6 @@ SickS300::SickS300()
 
   int param;
   double x, y, z;
-
   // reading transformation parameters from parameter server
   param_node.param(std::string("frame"), scan_data_.header.frame_id, std::string("base_laser_link"));
   param_node.param(std::string("send_transform"), param, 1);
@@ -110,21 +109,23 @@ SickS300::SickS300()
 
   // Reading device parameters
   param_node.param(std::string("devicename"), device_name_, std::string("/dev/sick300"));
-  param_node.param(std::string("baudrate"), baud_rate_, 500000);
+  param_node.param(std::string("baudrate"), baud_rate_, 115200);
 
   connected_ = serial_comm_.connect(device_name_, baud_rate_);
 
   scan_data_publisher_ = nodeHandle.advertise<sensor_msgs::LaserScan> ("laserscan", 10);
+  timestamp_publisher_ = nodeHandle.advertise<sicks300::s300timestamp> ("s300timestamp", 10);
 
 }
 
 SickS300::~SickS300()
 {
+	serial_comm_.disconnect();
 }
 
 void SickS300::update()
 {
-
+//printf("update ");
   if (connected_ != 0)
   {
     connected_ = serial_comm_.connect(device_name_, baud_rate_);
@@ -132,7 +133,7 @@ void SickS300::update()
 
   if (connected_ == 0 && serial_comm_.readData() == 0)
   {
-
+	stamp_=serial_comm_.GetStamp();
     float* ranges = serial_comm_.getRanges();
     unsigned int numRanges = serial_comm_.getNumRanges();
     if (!reduced_FOV_)
@@ -147,8 +148,14 @@ void SickS300::update()
         scan_data_.ranges[i] = ranges[i + 89];
     }
     scan_data_.header.stamp = ros::Time::now();
+	
 
     scan_data_publisher_.publish(scan_data_);
+	sicks300::s300timestamp ts;
+	ts.stamp=scan_data_.header.stamp;
+	ts.s300timestamp=stamp_;
+    timestamp_publisher_.publish(ts);
+
 
   }
 
@@ -186,7 +193,7 @@ int main(int argc, char** argv)
     ros::spinOnce();
     loop_rate.sleep();
   }
-
+	printf("test\n");
   ROS_INFO("Laser shut down.");
 
   return 0;

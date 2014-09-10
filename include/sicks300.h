@@ -51,6 +51,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
 #include <tf/transform_broadcaster.h>
+#include <sicks300/s300timestamp.h>
 
 /**
  * \class SickS300
@@ -76,9 +77,10 @@ protected:
 
   //! The underlying communications to the laser
   SerialCommS300 serial_comm_;
-
+	unsigned int stamp_;
   sensor_msgs::LaserScan scan_data_;
   ros::Publisher scan_data_publisher_;
+  ros::Publisher timestamp_publisher_;
 
   tf::TransformBroadcaster tf_broadcaster_;
   tf::Vector3 transform_vector_;
