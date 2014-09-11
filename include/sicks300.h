@@ -90,7 +90,7 @@ protected:
 
   //! Send Transform or not
   bool send_transform_;
-
+  std::vector<int> skip_beams;
   std::string device_name_;
   int baud_rate_;
   int connected_;

@@ -110,7 +110,25 @@ SickS300::SickS300()
   // Reading device parameters
   param_node.param(std::string("devicename"), device_name_, std::string("/dev/sick300"));
   param_node.param(std::string("baudrate"), baud_rate_, 115200);
+  
+  
+  std::string beam_skip_param_name;
+  param_node.param(std::string("beam_skip_param_name"), beam_skip_param_name,(std::string) "beams_to_skip");
+  
+//	printf("%s\n",beam_skip_param_name.c_str());
+    XmlRpc::XmlRpcValue beams_to_skip;
+    param_node.getParam("/"+beam_skip_param_name, beams_to_skip);
+  	ROS_ASSERT(beams_to_skip.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
+  	// Petlja po svim zrakama:
+  	
+  	for (int32_t i = 0; i < beams_to_skip.size(); ++i)
+  	{
+    		ROS_ASSERT(beams_to_skip[i].getType() == XmlRpc::XmlRpcValue::TypeInt);
+    		int beam = static_cast<int>(beams_to_skip[i]);
+    	
+    		skip_beams.push_back(beam);  	   
+	}
 
   connected_ = serial_comm_.connect(device_name_, baud_rate_);
 
@@ -141,12 +159,34 @@ void SickS300::update()
     {
       scan_data_.ranges.resize(numRanges);
       for (unsigned int i = 0; i < numRanges; i++)
+      {
         scan_data_.ranges[i] = ranges[i];
+//        if (ranges[i]<1.5) printf("%.2f %d\n",ranges[i],i);
+        for (int j=0;j<skip_beams.size();j++)
+        {
+			if (i==skip_beams[j])
+			{
+//				printf("%d %d %d\n",i,j,numRanges);
+				scan_data_.ranges[i]=0;
+				break;
+			}
+		}
+	  }
     }
     else
     {
       for (unsigned int i = 0; i < 361; i++)
+      {
         scan_data_.ranges[i] = ranges[i + 89];
+       for (int j=0;j<skip_beams.size();j++)
+        {
+			if (i==skip_beams[j])
+			{
+				scan_data_.ranges[i]=0;
+				break;
+			}
+		}
+	  }
     }
     scan_data_.header.stamp = ros::Time::now();
 	
