@@ -153,9 +153,9 @@ int SerialCommS300::connect(const std::string& deviceName, unsigned int baudRate
   if (setBaudRate(baudRateToBaudCode(baudRate)))
     return -1;
 
-/*  tcflush(m_fd, TCIOFLUSH);
-  usleep(1000);
-  tcflush(m_fd, TCIFLUSH);*/
+//  tcflush(m_fd, TCIFLUSH);
+ // usleep(1000);
+/*  tcflush(m_fd, TCIFLUSH);*/
 
   return 0;
 
@@ -283,9 +283,9 @@ int SerialCommS300::readData()
   if (RX_BUFFER_SIZE - m_rxCount > 0)
   {
     // Read a packet from the laser
-    printf("read\n");
+//    printf("read\n");
     int len = read(m_fd, &m_rxBuffer[m_rxCount], RX_BUFFER_SIZE - m_rxCount);
-    printf("%d\n",len);
+//    printf("%d\n",len);
     if (len == 0)
     {
       return -1;
@@ -310,7 +310,7 @@ int SerialCommS300::readData()
     m_rxCount += len-raz;
 
   }
-	printf("%d\n",m_rxCount);
+//	printf("%d\n",m_rxCount);
   while (m_rxCount >= 22)
   {
 
@@ -323,7 +323,6 @@ int SerialCommS300::readData()
 //		printf("%d ",m_rxBuffer[ii]);
       if (memcmp(&m_rxBuffer[ii], "\0\0\0\0\0\0", 6) == 0 && memcmp(&m_rxBuffer[ii+8], "\xFF", 1) == 0)
       {
-		  printf("ja\n");
 	st=m_rxBuffer[ii+14]+m_rxBuffer[ii+15]*256+m_rxBuffer[ii+16]*256*256+m_rxBuffer[ii+17]*256*256*256;
         memmove(m_rxBuffer, &m_rxBuffer[ii], m_rxCount - ii);
         m_rxCount -= ii;
@@ -375,7 +374,7 @@ int SerialCommS300::readData()
         packet_checksum = *reinterpret_cast<unsigned short *> (&m_rxBuffer[size + 12]);
         calc_checksum = createCRC(&m_rxBuffer[4], size + 8);
     }
-	printf("checksum %d %d\n",packet_checksum,calc_checksum);
+//	printf("checksum %d %d\n",packet_checksum,calc_checksum);
     if (packet_checksum != calc_checksum)
     {
       std::cout << "SerialCommS300: Checksum's dont match, thats bad (data packet size " << size << ")\n";
@@ -385,7 +384,7 @@ int SerialCommS300::readData()
     else
     {
       uint8_t* data = &m_rxBuffer[20];
-		printf("%d %d\n",data[0],data[1]);
+//		printf("%d %d\n",data[0],data[1]);
 
       if (data[0] != data[1])
       {

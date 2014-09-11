@@ -111,6 +111,7 @@ SickS300::SickS300()
   param_node.param(std::string("devicename"), device_name_, std::string("/dev/sick300"));
   param_node.param(std::string("baudrate"), baud_rate_, 115200);
 
+
   connected_ = serial_comm_.connect(device_name_, baud_rate_);
 
   scan_data_publisher_ = nodeHandle.advertise<sensor_msgs::LaserScan> ("laserscan", 10);
