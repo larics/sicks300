@@ -33,8 +33,6 @@ include_directories(
 add_library(serialcomm_s300
   src/serialcomm_s300.cpp)
 
-#target_link_libraries(serialcomm_s300 ${catkin_LIBRARIES})
-
 add_executable(sick300_driver src/sicks300.cpp)
 
 target_link_libraries(sick300_driver
