@@ -320,7 +320,7 @@ int SerialCommS300::readData()
     
     for (ii = 0; ii < m_rxCount - 22; ++ii)
     {
-//		printf("%d ",m_rxBuffer[ii]);
+		//printf("%d ",m_rxBuffer[ii]);
       if (memcmp(&m_rxBuffer[ii], "\0\0\0\0\0\0", 6) == 0 && memcmp(&m_rxBuffer[ii+8], "\xFF", 1) == 0)
       {
 	st=m_rxBuffer[ii+14]+m_rxBuffer[ii+15]*256+m_rxBuffer[ii+16]*256*256+m_rxBuffer[ii+17]*256*256*256;
@@ -374,7 +374,8 @@ int SerialCommS300::readData()
         packet_checksum = *reinterpret_cast<unsigned short *> (&m_rxBuffer[size + 12]);
         calc_checksum = createCRC(&m_rxBuffer[4], size + 8);
     }
-//	printf("checksum %d %d\n",packet_checksum,calc_checksum);
+	//printf("checksum %d %d\n",packet_checksum,calc_checksum);
+    /*
     if (packet_checksum != calc_checksum)
     {
       std::cout << "SerialCommS300: Checksum's dont match, thats bad (data packet size " << size << ")\n";
@@ -382,7 +383,7 @@ int SerialCommS300::readData()
       continue;
     }
     else
-    {
+    {*/
       uint8_t* data = &m_rxBuffer[20];
 //		printf("%d %d\n",data[0],data[1]);
 
@@ -440,7 +441,7 @@ int SerialCommS300::readData()
         {
           std::cout << "SerialCommS300: We got an unknown packet\n";
         }
-      }
+        //}
     }
 
     memmove(m_rxBuffer, &m_rxBuffer[size + 4], m_rxCount - (size + 4));
