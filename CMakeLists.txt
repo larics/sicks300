@@ -40,6 +40,8 @@ target_link_libraries(sick300_driver
   ${catkin_LIBRARIES}
 )
 
+add_dependencies(sick300_driver sicks300_gencpp)
+
 install(TARGETS serialcomm_s300 sick300_driver
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
