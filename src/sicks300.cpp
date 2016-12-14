@@ -54,6 +54,8 @@ SickS300::SickS300() : param_node_("~"), nodeHandle_("/") {
   // reading transformation parameters from parameter server
   param_node_.param(std::string("frame"), scan_data_.header.frame_id, std::string("base_laser_link"));
   param_node_.param<bool>(std::string("send_transform"), send_transform_, 1);
+  param_node_.param("enable_time_sync", enable_Tsync_, true);
+  param_node_.param("scan_period_length", scan_period_length_, 0.04);
 
   param_node_.param(std::string("tf_x"), x, 0.115);
   param_node_.param(std::string("tf_y"), y, 0.0);
@@ -107,8 +109,29 @@ void SickS300::update() {
     }
     ROS_INFO("Opening connection to Sick300-laser...");
     connected_ = serial_comm_.connect(device_name_, baud_rate_);
-    if (connected_ == 0) {
+    if (connected_ == 0) { // success
+
+      if(enable_Tsync_) {
+        // Timestamp synchronizer default parameters
+        TimestampSynchronizer::Options defaultSyncOptions;
+        defaultSyncOptions.useMedianFilter = false;
+        defaultSyncOptions.medianFilterWindow = 0;
+        defaultSyncOptions.useHoltWinters = true;
+        defaultSyncOptions.alfa_HoltWinters = 2e-3;
+        defaultSyncOptions.beta_HoltWinters = 1e-3;
+        defaultSyncOptions.alfa_HoltWinters_early = 2e-2;
+        defaultSyncOptions.beta_HoltWinters_early = 1e-2;
+        defaultSyncOptions.earlyClamp = true;
+        defaultSyncOptions.earlyClampWindow = 500;
+        defaultSyncOptions.timeOffset = 0.0;
+        defaultSyncOptions.initialB_HoltWinters = 0;
+
+        // reinitialize timestamp synchronizer
+        pstampSynchronizer_ = std::unique_ptr<TimestampSynchronizer>(new TimestampSynchronizer(defaultSyncOptions));
+      }
+
       ROS_INFO("Sick300 connected.");
+
     } else {
       ROS_ERROR("Sick300 not connected, will try connecting again in 500 msec...");
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -130,8 +153,14 @@ void SickS300::update() {
         scan_data_.ranges[j] = ranges[i];
       }
 
-      scan_data_.header.stamp = serial_comm_.getReceivedTime();
       unsigned int scanNum = serial_comm_.getScanNumber();
+      if (enable_Tsync_) {
+        unsigned int telegramNum = serial_comm_.getTelegramNumber();
+        scan_data_.header.stamp = ros::Time(pstampSynchronizer_->sync(scan_period_length_ * scanNum, serial_comm_.getReceivedTime().toSec(), telegramNum));
+      } else {
+        scan_data_.header.stamp = serial_comm_.getReceivedTime();
+      }
+
       ROS_DEBUG("ScanNum: %u", scanNum);
 
       scan_data_publisher_.publish(scan_data_);
