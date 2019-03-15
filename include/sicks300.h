@@ -52,6 +52,8 @@
 #include <sensor_msgs/LaserScan.h>
 #include <tf/transform_broadcaster.h>
 
+#include "timesync/TimestampSynchronizer.h"
+
 /**
  * \class SickS300
  * @brief uses SerialCommS300 to connect to Sick S300 laserscanner, read data and publishes
@@ -72,6 +74,10 @@ public:
   void broadcast_transform();
 
 protected:
+  //! Timestamp synchronizer
+  bool enable_Tsync_;
+  std::unique_ptr<TimestampSynchronizer> pstampSynchronizer_;
+  double scan_period_length_;
 
   //! The underlying communications to the laser
   SerialCommS300 serial_comm_;
